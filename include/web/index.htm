@@ -185,12 +185,11 @@
             <input type="checkbox" id="ms-menu-toggle" />
             <label for="ms-menu-toggle" class="ms-menu-icon"><i class="fa fa-bars"></i></label>
             <ul>
-                <li><small>MAC:<b id="mac">00:00:00:00:00:00</b></small> <small>IP:<b id="ip">0.0.0.0</b></small>
-                </li>
-                <li><small>SSID:<b id="ssid">Unknown</b></small> <small>RSSI:<b id="rssi">-0</b></small> <small>CH:<b
-                            id="channel">?</b></small>
-                </li>
-                <li><input type="text" placeholder="search" name="" id="" /></li>
+                <li><small>MAC:</small> <b id="mac">00:00:00:00:00:00</b></li>
+                <li><small>IP:</small> <b id="ip">0.0.0.0</b></li>
+                <li><small>SSID:</small> <b id="ssid">Unknown</b></li>
+                <li><small>RSSI:</small> <b id="rssi">-0</b></li>
+                <li><small>CH:</small> <b id="channel">?</b></li>
             </ul>
         </nav>
     </div>
@@ -198,7 +197,7 @@
         <div class="ms-card ms-fill ms-border">
             <div class="row">
                 <div class="col-sm" id="ws2">
-                    <input class="ms-secondary" id="ws" type="text" value="ws://192.168.4.1:81/">
+                    <input class="ms-secondary" id="ws" type="text" value="ws://192.168.50.174:81/">
                 </div>
                 <div class="col-sm">
                     <button class="ms-btn ms-primary" id="wsConnectButton" onclick="wsConnectPress()">Connect</button>
@@ -237,7 +236,7 @@
                 <div class="col-sm ms-form-group-inline">
                     <label class="ms-action2" for="steps">Steps</label>
                     <input class="ms-action2" oninput="wsSend('s'+this.value)" id="steps" type="number" min="50"
-                        max="6400" step="200" value="200">
+                        max="6400" step="200" value="1600">
                 </div>
             </div>
         </div>
