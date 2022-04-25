@@ -1,7 +1,7 @@
 // STEPPER_STEP has to be 16.
 #define STEPPER_STEP 16
 #define STEPPER_DIR 15
-#define STEPPER_RST 14
+#define STEPPER_RST 5
 #define STEPPER_FAULT 12
 
 #define STEPPER_MAX_SPEED 4000
