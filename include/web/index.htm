@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="minstyle.io.css">
+    <script type="text/javascript" src="dark.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1.0">
+    <title>ESP8266 Stepper Tester</title>
+    <script language="javascript" type="text/javascript">
+        var websocket;
+        var lastResult;
+        function wsSend(message) {
+            if (websocket && (websocket.readyState == 1)) {
+                websocket.send(message);
+            }
+        }
+        function wsConnectPress() {
+            if (websocket && ((websocket.readyState == 0) || (websocket.readyState == 1))) {
+                websocket.close();
+            } else {
+                if (window.location.pathname == "/") { // this is here for local editing.
+                    websocket = new WebSocket("ws://" + window.location.hostname + ":81/");
+                } else {
+                    websocket = new WebSocket(document.getElementById("ws").value);
+                }
+                document.getElementById("wsConnectButton").innerHTML = "Disconnect";
+                document.getElementById("wsConnectButton").classList.remove('ms-primary');
+                document.getElementById("ws2").style.display = "none";
+                websocket.onopen = function (event) {
+                    console.log("WebSocket Connected", event);
+                }
+                websocket.onclose = function (event) {
+                    console.log("WebSocket Disconnected", event);
+                    document.getElementById("wsConnectButton").innerHTML = "Connect";
+                    document.getElementById("wsConnectButton").classList.add('ms-primary');
+                    if (window.location.pathname != "/") { // this is here for local editing.
+                        document.getElementById("ws2").style.display = "inline";
+                    }
+                }
+                websocket.onmessage = function (event) {
+                    var firstchar = event.data.substring(0, 1);
+                    var therest = event.data.substring(1);
+                    switch (firstchar) {
+                        case 'e': // current ENABLED state
+                            if (therest == "0") {
+                                stepperEnabled = false;
+                                document.getElementById("EnableStepper").innerHTML = "Enable Stepper";
+                                document.getElementById("EnableStepper").classList.remove('ms-secondary');
+                            } else {
+                                stepperEnabled = true;
+                                document.getElementById("EnableStepper").innerHTML = "Disable Stepper";
+                                document.getElementById("EnableStepper").classList.add('ms-secondary');
+                            }
+                            break;
+                        case 'd': // current DIRECTION
+                            rotation = therest;
+                            if (therest == "0") {
+                                document.getElementById("rotation").style.transform = "scaleX(-1)";
+                            } else {
+                                document.getElementById("rotation").style.transform = "scaleX(1)";
+                            }
+                            break;
+                        case 'f': // current FAULT (should be 1)
+                            if (therest == "0") {
+                                document.getElementById("fault").style.visibility = "visible";
+                            } else {
+                                document.getElementById("fault").style.visibility = "hidden";
+                            }
+                            break;
+                        case 't': // current timer state
+                            if (therest == "0") {
+                                document.getElementById("timer").style.visibility = "hidden";
+                            } else {
+                                document.getElementById("timer").style.visibility = "visible";
+                            }
+                            break;
+                        case '6': // channel
+                            document.getElementById("channel").innerHTML = therest;
+                            break;
+                        case '7': // SSID
+                            document.getElementById("ssid").innerHTML = therest;
+                            break;
+                        case '8': // IP
+                            document.getElementById("ip").innerHTML = therest;
+                            break;
+                        case '9': // mac
+                            document.getElementById("mac").innerHTML = therest;
+                            break;
+                        case '-': // rssi
+                            document.getElementById("rssi").innerHTML = event.data.substring(1);
+                            break;
+                        case '=': // WiFi scan button
+                            if (event.data.substring(2, 3) == "+") {
+                                document.getElementById("wifiscan").innerHTML = "<div class=\"ms-loading ms-small ms-action2\"></div> Scanning...";
+                                document.getElementById("wifiscanresults").innerHTML = "<table class=\"ms-table\" id=\"wifitable\"><thead><tr><th>SSID</th><th>BSSID</th><th>RSSI</th></tr></thead><tbody></tbody></table>";
+                                lastResult = 0;
+                            }
+                            if (event.data.substring(2, 3) == "-") {
+                                document.getElementById("wifiscan").innerHTML = "Refresh Scan";
+                                // document.getElementById("wifiscanresults").innerHTML = ""; // do this some time later?
+                                document.getElementById("wifiscan").classList.remove('ms-disabled');
+                            }
+                            break;
+                        case '{': // json scan results
+                            d = JSON.parse(event.data);
+                            var row = document.getElementById("wifitable").insertRow(-1);
+                            row.id = "scan_" + lastResult;
+                            var cell1 = row.insertCell(0);
+                            var cell2 = row.insertCell(1);
+                            var cell3 = row.insertCell(2);
+                            cell1.innerHTML = d.ssid;
+                            cell2.innerHTML = d.bssid;
+                            cell3.innerHTML = d.rssi;
+                            cell1.onclick = cell2.onclick = cell3.onclick = () => { populateWiFi(row.id) };
+                            lastResult++;
+                            break;
+                        default:
+                            console.log("Received Unknown: ", event.data);
+                            break;
+                    }
+                }
+                websocket.onerror = function (err) {
+                    console.error("WebSocket Error: ", err);
+                }
+            }
+        }
+
+        function populateWiFi(row) {
+            document.getElementById("wifi_ssid").value = document.getElementById(row).childNodes[0].innerHTML;
+            document.getElementById("wifi_bssid").value = document.getElementById(row).childNodes[1].innerHTML;
+            document.getElementById("wifi_password").focus();
+        }
+
+        var stepperEnabled = false;
+        function enableStepper() {
+            if (stepperEnabled) {
+                stepperEnabled = false;
+                wsSend("-");
+                document.getElementById("EnableStepper").innerHTML = "Enable Stepper";
+                document.getElementById("EnableStepper").classList.remove('ms-secondary');
+            } else {
+                stepperEnabled = true;
+                wsSend("+");
+                document.getElementById("EnableStepper").innerHTML = "Disable Stepper";
+                document.getElementById("EnableStepper").classList.add('ms-secondary');
+            }
+        }
+        function wifiscan() {
+            if (websocket && (websocket.readyState == 1)) {
+                wsSend("?");
+                document.getElementById("wifiscan").classList.add('ms-disabled');
+            }
+        }
+        function wificonnect() {
+            wsSend("_" + JSON.stringify({ ssid: document.getElementById("wifi_ssid").value, bssid: document.getElementById("wifi_bssid").value, password: document.getElementById("wifi_password").value }));
+        }
+
+        var rotation = 0;
+
+        function changeRotation() {
+            if (rotation == 0) {
+                wsSend("d1");
+            } else {
+                wsSend("d0");
+            }
+        }
+
+
+        function init() {
+            wsConnectPress();
+            document.getElementById("rotation").style.backgroundSize = "cover";
+            document.getElementById("rotation").style.backgroundPosition = "center";
+            document.getElementById("rotation").style.backgroundImage = "url('cw.png')";// = 'url("./cw.png") bottom';
+            document.getElementById("rotation").style.backgroundRepeat = "no-repeat";
+        }
+        // Call the init function as soon as the page loads
+        window.addEventListener("load", init, false);
+    </script>
+</head>
+
+<body>
+    <div class="ms-menu ms-border">
+        <nav class="ms-menu-link">
+            <input type="checkbox" id="ms-menu-toggle" />
+            <label for="ms-menu-toggle" class="ms-menu-icon"><i class="fa fa-bars"></i></label>
+            <ul>
+                <li><small>MAC:<b id="mac">00:00:00:00:00:00</b></small> <small>IP:<b id="ip">0.0.0.0</b></small>
+                </li>
+                <li><small>SSID:<b id="ssid">Unknown</b></small> <small>RSSI:<b id="rssi">-0</b></small> <small>CH:<b
+                            id="channel">?</b></small>
+                </li>
+                <li><input type="text" placeholder="search" name="" id="" /></li>
+            </ul>
+        </nav>
+    </div>
+    <div class="container">
+        <div class="ms-card ms-fill ms-border">
+            <div class="row">
+                <div class="col-sm" id="ws2">
+                    <input class="ms-secondary" id="ws" type="text" value="ws://192.168.4.1:81/">
+                </div>
+                <div class="col-sm">
+                    <button class="ms-btn ms-primary" id="wsConnectButton" onclick="wsConnectPress()">Connect</button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm">
+                    <button class="ms-btn" id="EnableStepper" onclick="enableStepper()">Enable Stepper</button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm ms-btn-group">
+                    <button class="ms-btn ms-primary" onclick="wsSend('!')">STOP</button>
+                    <button class="ms-btn ms-primary" id="fault" style="visibility: visible;">FAULT</button>
+                    <button class="ms-btn ms-secondary" id="timer" style="visibility: hidden;">TIMER</button>
+                    <button class="ms-btn ms-action" onclick="wsSend('w')">WIPE</button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm ms-btn-group">
+                    <button class="ms-btn" onclick="wsSend('m')">STEP</button>
+                    <button class="ms-btn" onclick="wsSend('c')">CONST</button>
+                    <button class="ms-btn ms-action2" onmousedown="wsSend('c');this.classList.add('ms-info');"
+                        onmouseup="wsSend('!');this.classList.remove('ms-info');">MOMENT</button>
+                    <button class="ms-btn ms-secondary" id="rotation" onclick="changeRotation()"> &nbsp; </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm ms-form-group-inline">
+                    <label class="ms-action2" for="delay">Delay</label>
+                    <input class="ms-action2" onchange="wsSend('t'+this.value)" id="delay" type="number" min="5000"
+                        max="500000" step="5000" value="60000">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm ms-form-group-inline">
+                    <label class="ms-action2" for="steps">Steps</label>
+                    <input class="ms-action2" oninput="wsSend('s'+this.value)" id="steps" type="number" min="50"
+                        max="6400" step="200" value="200">
+                </div>
+            </div>
+        </div>
+        <div class="ms-card ms-fill ms-border">
+            <div class="row">
+                <div class="col-sm">
+                    <button class="ms-btn ms-secondary" id="wifiscan" onclick="wifiscan()">WiFi SCAN</button>
+                    <span id="wifiscanresults"></span>
+                    <input class="ms-secondary" id="wifi_ssid" type="text" maxlength="64" placeholder="WiFi SSID"
+                        value="">
+                    <input class="ms-secondary" id="wifi_bssid" type="text" maxlength="17"
+                        placeholder="00:00:00:00:00:00" value="">
+                    <input class="ms-secondary" id="wifi_password" type="password" maxlength="64"
+                        placeholder="WiFi Password" value="">
+                    <button class="ms-btn ms-secondary" onclick="wificonnect()">WiFi Connect</button>
+                </div>
+                <div class="col-sm">
+                    <form method='POST' action='/update' enctype='multipart/form-data'><input type='file'
+                            name='update'><input type='submit' value='Update'></form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
