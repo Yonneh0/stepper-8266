@@ -1,0 +1,7 @@
+ESP8266 Stepper Controller and Tester
+
+Requirements:
+`DRV8825 Stepper Motor Driver Carrier` https://www.amazon.com/DRV8825-Stepper-Driver-Module-Printer/dp/B07XF2LYC8
+`ESP-12S, ESP8266MOD, or similar` https://www.amazon.com/ESP-12S-ESP-12F-Upgrade-ESP8266-Wireless/dp/B07VF7B9XB
+`Power` (3.3v 250ma, and 8.2-45V 0-4.4a for Stepper Motor)
+
