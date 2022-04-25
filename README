@@ -2,6 +2,7 @@ ESP8266 Stepper Controller and Tester
 
 Currently, this project is somewhere before PRE-RELEASE. It was last recorded as being in the "Hold my beer, watch this" phase.
 
+Code is still proof of concept. It is NOT hardened in any way. It is currently blindly open.
 
 Requirements:
 `DRV8825 Stepper Motor Driver Carrier` https://www.amazon.com/DRV8825-Stepper-Driver-Module-Printer/dp/B07XF2LYC8
