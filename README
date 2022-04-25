@@ -9,3 +9,4 @@ Requirements:
 `ESP-12S, ESP8266MOD, or similar` https://www.amazon.com/ESP-12S-ESP-12F-Upgrade-ESP8266-Wireless/dp/B07VF7B9XB
 `Power` (3.3v 250ma, and 8.2-45V 0-4.4a for Stepper Motor)
 
+example screenshot in misc/stepper-8266.png
