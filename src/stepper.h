@@ -16,7 +16,6 @@
 
 volatile IRAM_ATTR uint32_t startingSteps = STEPPER_MAX_ACCEL_STEPS;
 volatile IRAM_ATTR int32_t pendingSteps = STEPPER_MAX_ACCEL_STEPS;
-volatile IRAM_ATTR uint32_t accelSteps = 0;
 volatile IRAM_ATTR uint32_t stepperMode = StepperMode_OFF;
 volatile IRAM_ATTR uint32_t startingTicks = STEPPER_MIN_START_SPEED;
 volatile IRAM_ATTR uint32_t pendingTicks = STEPPER_MIN_START_SPEED;
@@ -48,6 +47,23 @@ void IRAM_ATTR stepperTimerStop() {
     }
 }
 
+// soft stop
+// void stepperStop() {
+//     // stepperTimerStop();  // timer1 edge int disable
+//     stepperMode = StepperMode_Step;
+//     pendingTicks = startingTicks;  // set target speed
+//     if (accelSteps > STEPPER_MAX_ACCEL_STEPS) accelSteps = STEPPER_MAX_ACCEL_STEPS;
+//     pendingSteps = accelSteps;
+// }
+
+// immediate stop
+void stepperStop() {
+    stepperTimerStop();  // timer1 edge int disable
+    stepperMode = StepperMode_OFF;
+    realTicks = STEPPER_MIN_START_SPEED;
+    pendingSteps = startingSteps;  // refresh steps
+}
+
 void IRAM_ATTR stepperSetDir(uint32_t dir) {
     if (dir) {
         GPOS = (1 << STEPPER_DIR);  // digitalWrite(STEPPER_DIR, 1);
@@ -68,28 +84,28 @@ void IRAM_ATTR onTimer1ISR(void *para, void *frame) {
         // ramp up
         if (realTicks > pendingTicks) {
             realTicks *= (double)0.999;
-            accelSteps++;
+            // accelSteps++;
             if (realTicks < pendingTicks) realTicks = pendingTicks;  // correct overshoot
         }
         // ramp down
-        if (realTicks < pendingTicks) {
-            realTicks /= (double)0.999;
-            accelSteps--;
-            if (realTicks > pendingTicks) realTicks = pendingTicks;  // correct overshoot
-        }
+        // if (realTicks < pendingTicks) {
+        //     realTicks /= (double)0.999;
+        //     accelSteps--;
+        //     if (realTicks > pendingTicks) realTicks = pendingTicks;  // correct overshoot
+        // }
         uint8_t setTimer = 1;
-        if ((stepperMode & 2) == 2) {                    // stepperMode 2 or 3, Step or Wipe
-            if ((uint32_t)pendingSteps <= accelSteps) {  // we're either over half way, or ramp up has completed, and we're at the decel point
-                if (startingTicks < STEPPER_MIN_START_SPEED) {
-                    pendingTicks = STEPPER_MIN_START_SPEED;
-                } else {
-                    pendingTicks = startingTicks;
-                }
-            }
+        if ((stepperMode & 2) == 2) {  // stepperMode 2 or 3, Step or Wipe
+            // if ((uint32_t)pendingSteps <= accelSteps) {  // we're either over half way, or ramp up has completed, and we're at the decel point
+            //     if (startingTicks < STEPPER_MIN_START_SPEED) {
+            //         pendingTicks = STEPPER_MIN_START_SPEED;
+            //     } else {
+            //         pendingTicks = startingTicks;
+            //     }
+            // }
             pendingSteps--;
             if (pendingSteps <= 0) {  // steps has expired
                 if (stepperMode == StepperMode_Step) {
-                    stepperTimerStop();  // timer1 edge int disable
+                    stepperStop();
                     setTimer = 0;
                 } else {                           // StepperMode_Wipe
                     pendingSteps = startingSteps;  // refresh steps
@@ -149,23 +165,6 @@ void stepperMove(uint32_t mode = StepperMode_Const) {
     stepperTimerStart();               // timer1 edge int enable
     // Serial.printf("Stepper mode %u, %u ticks (starting at: %u), dir %u\n", mode, pendingTicks, realTicks, dir);
 }
-
-// soft stop
-void stepperStop() {
-    // stepperTimerStop();  // timer1 edge int disable
-    stepperMode = StepperMode_Step;
-    pendingTicks = startingTicks;  // set target speed
-    if (accelSteps > STEPPER_MAX_ACCEL_STEPS) accelSteps = STEPPER_MAX_ACCEL_STEPS;
-    pendingSteps = accelSteps;
-}
-
-// immediate stop
-// void stepperStopHard() {
-//     stepperTimerStop();  // timer1 edge int disable
-//     stepperMode = StepperMode_OFF;
-//     pendingTicks = startingTicks;  // set target speed
-//     pendingSteps = 0;
-// }
 
 void stepper_h_init() {
     ETS_FRC_TIMER1_INTR_ATTACH(onTimer1ISR, NULL);

@@ -181,6 +181,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         case WStype_TEXT:
             newTicks = atoi((const char *)(payload + 1));
             switch ((char)payload[0]) {
+                case '!':
+                    // Serial.printf("[%u] Got Stepper STOP\n", num);
+                    stepperStop();
+                    break;
                 case '+':
                     // Serial.printf("[%u] Got Stepper Enable\n", num);
                     stepperEnable();
@@ -189,6 +193,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
                     // Serial.printf("[%u] Got Stepper Disable\n", num);
                     stepperDisable();
                     break;
+
                 case 'c':
                     // Serial.printf("[%u] Got Stepper Const\n", num);
                     stepperMove(StepperMode_Const);
@@ -201,10 +206,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
                     // Serial.printf("[%u] Got Stepper Wipe\n", num);
                     stepperMove(StepperMode_Wipe);
                     break;
-                case '!':
-                    // Serial.printf("[%u] Got Stepper STOP\n", num);
-                    stepperStop();
-                    break;
+
                 case 'd':
                     // Serial.printf("[%u] Got Stepper Direction %u\n", num, newTicks);
                     stepperSetDir(newTicks);
@@ -217,8 +219,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
                 case 's':
                     // Serial.printf("[%u] Got Stepper %u steps\n", num, newTicks);
                     startingSteps = pendingSteps = newTicks;
-                    accelSteps = 0;
                     break;
+
                 case '?':
                     Serial.printf("[%u] Got Network Scan\n", num);
                     wifi_scanStart = millis();
@@ -234,7 +236,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
                     String req_pass = doc["password"];
                     uint8_t bssid[6] = {0, 0, 0, 0, 0, 0};
                     bool bssid_valid = false;
-
                     if ((req_bssid.length() == 17) && (((req_bssid.charAt(2) + req_bssid.charAt(5) + req_bssid.charAt(8) + req_bssid.charAt(11) + req_bssid.charAt(14)) == (0x3A * 5)))) {
                         bssid[0] = text2int(req_bssid, 0);
                         bssid[1] = text2int(req_bssid, 3);
@@ -244,17 +245,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
                         bssid[5] = text2int(req_bssid, 15);
                         if ((bssid[0] + bssid[1] + bssid[2] + bssid[3] + bssid[4] + bssid[5]) > 0) bssid_valid = true;
                     }
-
                     Serial.printf("Got set SSID:%s %u, BSSID:%s %u, PASSWORD:%s %u\n", req_ssid.c_str(), req_ssid.length(), req_bssid.c_str(), req_bssid.length(), req_pass.c_str(), req_pass.length());
                     Serial.printf("SSID:\"%s\" PASSWORD:\"%s\" bssid_set:%u bssid:%02X%02X:%02X%02X:%02X%02X\n", req_ssid.c_str(), req_pass.c_str(), bssid_valid, bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
-                    if (bssid_valid) {
+                    if (bssid_valid)
                         WiFi.begin(req_ssid.c_str(), req_pass.c_str(), -1, bssid, true);
-                    } else {
+                    else
                         WiFi.begin(req_ssid.c_str(), req_pass.c_str());
-                    }
                     break;
                 }
-
                 default:
                     Serial.printf("[%u] get Unknown Text: %.*s\n", num, length, payload);
                     break;
