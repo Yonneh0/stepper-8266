@@ -10,3 +10,18 @@ Requirements:
 `Power` (3.3v 250ma, and 8.2-45V 0-4.4a for Stepper Motor)
 
 example screenshot in misc/stepper-8266.png
+
+Added some scripts to automate things.
+```sh
+$ python .\gen_rsa_key.py
+Wrote ./private.key
+Wrote ./public.key
+Wrote ./include/public.key.h
+$ python .\gen_include_web.py
+Rebuilt index.htm as ./include/web/index_htm.h
+Rebuilt favicon.ico as ./include/web/favicon_ico.h
+Rebuilt cw.png as ./include/web/cw_png.h
+Rebuilt dark.min.js as ./include/web/dark_min_js.h
+Rebuilt minstyle.io.css as ./include/web/minstyle_io_css.h
+Rebuilt minstyle.io.css.map as ./include/web/minstyle_io_css_map.h
+```

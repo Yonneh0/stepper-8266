@@ -4,22 +4,21 @@
 #define STEPPER_RST 5
 #define STEPPER_FAULT 12
 
-#define STEPPER_MAX_SPEED 4000
-#define STEPPER_MIN_START_SPEED 60000
-#define STEPPER_MIN_SPEED 5000000
-#define STEPPER_MAX_ACCEL_STEPS 1600
+#define STEPPER_MAX_SPEED 500
+#define STEPPER_MIN_START_SPEED 30000
+#define STEPPER_MIN_SPEED 2500000
 
 #define StepperMode_OFF 0
 #define StepperMode_Const 1
 #define StepperMode_Step 2
 #define StepperMode_Wipe 3
 
-volatile IRAM_ATTR uint32_t startingSteps = STEPPER_MAX_ACCEL_STEPS;
-volatile IRAM_ATTR int32_t pendingSteps = STEPPER_MAX_ACCEL_STEPS;
+volatile IRAM_ATTR uint32_t startingSteps = 1600;
+volatile IRAM_ATTR int32_t pendingSteps = 1600;
 volatile IRAM_ATTR uint32_t stepperMode = StepperMode_OFF;
-volatile IRAM_ATTR uint32_t startingTicks = STEPPER_MIN_START_SPEED;
-volatile IRAM_ATTR uint32_t pendingTicks = STEPPER_MIN_START_SPEED;
-volatile IRAM_ATTR uint32_t realTicks = STEPPER_MIN_START_SPEED;
+volatile IRAM_ATTR uint32_t startingTicks = 30000;
+volatile IRAM_ATTR uint32_t pendingTicks = 30000;
+volatile IRAM_ATTR uint32_t realTicks = 30000;
 volatile IRAM_ATTR uint32_t faultStatus = 0;
 
 void IRAM_ATTR stepperEnable() {
@@ -46,15 +45,6 @@ void IRAM_ATTR stepperTimerStop() {
         webSocket.broadcastTXT("t0");
     }
 }
-
-// soft stop
-// void stepperStop() {
-//     // stepperTimerStop();  // timer1 edge int disable
-//     stepperMode = StepperMode_Step;
-//     pendingTicks = startingTicks;  // set target speed
-//     if (accelSteps > STEPPER_MAX_ACCEL_STEPS) accelSteps = STEPPER_MAX_ACCEL_STEPS;
-//     pendingSteps = accelSteps;
-// }
 
 // immediate stop
 void stepperStop() {
@@ -83,25 +73,12 @@ void IRAM_ATTR onTimer1ISR(void *para, void *frame) {
 
         // ramp up
         if (realTicks > pendingTicks) {
-            realTicks *= (double)0.999;
+            realTicks *= (double)0.995;
             // accelSteps++;
             if (realTicks < pendingTicks) realTicks = pendingTicks;  // correct overshoot
         }
-        // ramp down
-        // if (realTicks < pendingTicks) {
-        //     realTicks /= (double)0.999;
-        //     accelSteps--;
-        //     if (realTicks > pendingTicks) realTicks = pendingTicks;  // correct overshoot
-        // }
         uint8_t setTimer = 1;
         if ((stepperMode & 2) == 2) {  // stepperMode 2 or 3, Step or Wipe
-            // if ((uint32_t)pendingSteps <= accelSteps) {  // we're either over half way, or ramp up has completed, and we're at the decel point
-            //     if (startingTicks < STEPPER_MIN_START_SPEED) {
-            //         pendingTicks = STEPPER_MIN_START_SPEED;
-            //     } else {
-            //         pendingTicks = startingTicks;
-            //     }
-            // }
             pendingSteps--;
             if (pendingSteps <= 0) {  // steps has expired
                 if (stepperMode == StepperMode_Step) {
@@ -116,19 +93,17 @@ void IRAM_ATTR onTimer1ISR(void *para, void *frame) {
                     } else {
                         realTicks = pendingTicks;
                     }
-                    // dirty little hack for wipe rebound
-                    setTimer = 0;
+                    setTimer = 0;                        // dirty little hack for wipe rebound
                     T1L = STEPPER_MIN_SPEED & 0x7FFFFF;  // timer1 set time
-
-                    stepperSetDir(!GPIP(STEPPER_DIR));  // reverse direction
+                    stepperSetDir(!GPIP(STEPPER_DIR));   // reverse direction
                 }
             }
         }
         if (setTimer)
-            T1L = (realTicks / 2) & 0x7FFFFF;  // timer1 set time
+            T1L = realTicks & 0x7FFFFF;  // timer1 set time
     } else {
-        GP16O |= 1;                        // set GPIO16
-        T1L = (realTicks / 2) & 0x7FFFFF;  // timer1 set time
+        GP16O |= 1;                  // set GPIO16
+        T1L = realTicks & 0x7FFFFF;  // timer1 set time
     }
 
     xt_wsr_ps(savedPS);
@@ -142,6 +117,8 @@ void IRAM_ATTR onTimer1ISR(void *para, void *frame) {
 
 void IRAM_ATTR stepperFaultISR() {
     faultStatus = 1;
+    stepperTimerStop();
+    stepperDisable();
 }
 uint8_t rssiCount = 0;
 void stepperCheckFault() {
@@ -161,9 +138,8 @@ void stepperCheckFault() {
 }
 void stepperMove(uint32_t mode = StepperMode_Const) {
     stepperMode = mode;
-    T1L = (realTicks / 2) & 0x7FFFFF;  // timer1 set time
-    stepperTimerStart();               // timer1 edge int enable
-    // Serial.printf("Stepper mode %u, %u ticks (starting at: %u), dir %u\n", mode, pendingTicks, realTicks, dir);
+    T1L = realTicks & 0x7FFFFF;  // timer1 set time
+    stepperTimerStart();         // timer1 edge int enable
 }
 
 void stepper_h_init() {

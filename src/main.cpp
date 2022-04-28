@@ -15,7 +15,9 @@ const char* ota_password = "pineapples";
 uint16_t ota_port = 13442;
 
 #include "ota.h"
+#include "public.key.h"
 #include "stepper.h"
+#include "timer0.h"
 #include "web.h"
 #include "websocket.h"
 
@@ -131,6 +133,7 @@ void setup() {
     Serial.printf("       http://%s/\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("       http://%s/\n", WiFi.localIP().toString().c_str());
 }
+uint8_t spam;
 void loop() {
     delay(50);
     webSocket.loop();
@@ -139,4 +142,8 @@ void loop() {
     ArduinoOTA.handle();
     stepperCheckFault();
     webSocketCheckResults();
+    if (++spam == 100) {
+        spam = 0;
+        Serial.printf("timer0: %u\n", timer0_read());
+    }
 }
