@@ -109,12 +109,6 @@ void IRAM_ATTR onTimer1ISR(void *para, void *frame) {
     xt_wsr_ps(savedPS);
 }
 
-// uint32_t IRAM_ATTR stepperSanitizeTicks(uint32_t ticks) {
-//     if (ticks > STEPPER_MIN_SPEED) ticks = STEPPER_MIN_SPEED;
-//     if (ticks < STEPPER_MAX_SPEED) ticks = STEPPER_MAX_SPEED;
-//     return ticks;
-// }
-
 void IRAM_ATTR stepperFaultISR() {
     faultStatus = 1;
     stepperTimerStop();

@@ -1,3 +1,7 @@
+#include "public.key.h"
+
+uint16_t ota_port = 13442;
+
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
@@ -5,6 +9,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WebSocketsServer.h>
+
 ESP8266WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
 
@@ -12,19 +17,14 @@ const char* ap_name = "stepper";
 const char* ap_pass = "stepperstepper";
 const char* hostname = "stepper";
 const char* ota_password = "pineapples";
-uint16_t ota_port = 13442;
 
 #include "ota.h"
-#include "public.key.h"
 #include "stepper.h"
-#include "timer0.h"
 #include "web.h"
 #include "websocket.h"
 
 unsigned long wifiConnectTime;
-void WiFi_onStationModeAuthModeChanged(const WiFiEventStationModeAuthModeChanged& e) {
-    Serial.printf("WiFi STA Auth Mode Changed %u -> %u\n", e.oldMode, e.newMode);
-}
+
 void WiFi_onStationModeConnected(const WiFiEventStationModeConnected& e) {
     Serial.printf("WiFi STA Connected SSID:\"%s\" CH:%u BSSID:%02X%02X:%02X%02X:%02X%02X\n", e.ssid.c_str(), e.channel, e.bssid[0], e.bssid[1], e.bssid[2], e.bssid[3], e.bssid[4], e.bssid[5]);
 }
@@ -51,7 +51,7 @@ void WiFi_onWiFiModeChange(const WiFiEventModeChange& e) {
     Serial.printf("WiFi Mode Change: %u -> %u\n", (e.oldMode & 0x03), (e.newMode & 0x03));
 }
 
-WiFiEventHandler weh[9];
+WiFiEventHandler weh[7];
 
 void setup() {
     stepper_h_init();
@@ -76,27 +76,13 @@ void setup() {
         Serial.println("Flash Chip configuration wrong!\n");
     }
 
-    Serial.print(F("system_get_boot_version(): "));
-    Serial.println(system_get_boot_version());
-
-    Serial.print(F("system_get_userbin_addr(): 0x"));
-    Serial.println(system_get_userbin_addr(), HEX);
-
-    weh[0] = WiFi.onStationModeAuthModeChanged(WiFi_onStationModeAuthModeChanged);
-    weh[1] = WiFi.onStationModeConnected(WiFi_onStationModeConnected);
-    weh[2] = WiFi.onStationModeDHCPTimeout(WiFi_onStationModeDHCPTimeout);
-    weh[3] = WiFi.onStationModeDisconnected(WiFi_onStationModeDisconnected);
-    weh[4] = WiFi.onStationModeGotIP(WiFi_onStationModeGotIP);
-    weh[6] = WiFi.onSoftAPModeStationConnected(WiFi_onSoftAPModeStationConnected);
-    weh[7] = WiFi.onSoftAPModeStationDisconnected(WiFi_onSoftAPModeStationDisconnected);
-    weh[8] = WiFi.onWiFiModeChange(WiFi_onWiFiModeChange);
-
-    if (WiFi.getPersistent()) {
-        Serial.printf("WiFi is PERSISTENT\n");
-    }
-    // else {
-    //     wifi_station_get_config(&c);
-    // }
+    weh[0] = WiFi.onStationModeConnected(WiFi_onStationModeConnected);
+    weh[1] = WiFi.onStationModeDHCPTimeout(WiFi_onStationModeDHCPTimeout);
+    weh[2] = WiFi.onStationModeDisconnected(WiFi_onStationModeDisconnected);
+    weh[3] = WiFi.onStationModeGotIP(WiFi_onStationModeGotIP);
+    weh[4] = WiFi.onSoftAPModeStationConnected(WiFi_onSoftAPModeStationConnected);
+    weh[5] = WiFi.onSoftAPModeStationDisconnected(WiFi_onSoftAPModeStationDisconnected);
+    weh[6] = WiFi.onWiFiModeChange(WiFi_onWiFiModeChange);
 
     struct station_config c;
     wifi_station_get_config_default(&c);
@@ -133,7 +119,7 @@ void setup() {
     Serial.printf("       http://%s/\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("       http://%s/\n", WiFi.localIP().toString().c_str());
 }
-uint8_t spam;
+
 void loop() {
     delay(50);
     webSocket.loop();
@@ -142,8 +128,4 @@ void loop() {
     ArduinoOTA.handle();
     stepperCheckFault();
     webSocketCheckResults();
-    if (++spam == 100) {
-        spam = 0;
-        Serial.printf("timer0: %u\n", timer0_read());
-    }
 }

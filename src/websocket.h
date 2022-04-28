@@ -150,7 +150,6 @@ uint8_t text2int(String input, uint8_t posit) {
             output += 0;
             break;
     }
-    Serial.printf("Converted %c%c, got %u", input.charAt(posit), input.charAt(posit + 1), output);
     return output;
 }
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
@@ -250,7 +249,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
                     if (bssid_valid)
                         WiFi.begin(req_ssid.c_str(), req_pass.c_str(), -1, bssid, true);
                     else
-                        WiFi.begin(req_ssid.c_str(), req_pass.c_str());
+                        WiFi.begin(req_ssid.c_str(), req_pass.c_str(), -1, NULL, true);
                     break;
                 }
                 default:
