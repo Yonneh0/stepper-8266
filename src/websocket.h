@@ -36,122 +36,25 @@ void webSocketCheckResults() {
         webSocket_WiFiScanResultsReady = false;  // lick the back of that conveluted post-it, and put it back on the 'fridge
     }
 }
-uint8_t text2int(String input, uint8_t posit) {
-    uint8_t output;
-    switch (input.charAt(posit)) {
-        case '1':
-            output = 16;
+
+uint8_t hex2dec_c(const char *s) {
+    uint8_t v, n = 0;
+    for (int i = 0; i < 2 && s[i] != '\0'; i++) {
+        v = 0;
+        if ('a' <= s[i] && s[i] <= 'f') {
+            v = s[i] - 97 + 10;
+        } else if ('A' <= s[i] && s[i] <= 'F') {
+            v = s[i] - 65 + 10;
+        } else if ('0' <= s[i] && s[i] <= '9') {
+            v = s[i] - 48;
+        } else
             break;
-        case '2':
-            output = 32;
-            break;
-        case '3':
-            output = 48;
-            break;
-        case '4':
-            output = 64;
-            break;
-        case '5':
-            output = 80;
-            break;
-        case '6':
-            output = 96;
-            break;
-        case '7':
-            output = 112;
-            break;
-        case '8':
-            output = 128;
-            break;
-        case '9':
-            output = 144;
-            break;
-        case 'A':
-        case 'a':
-            output = 160;
-            break;
-        case 'B':
-        case 'b':
-            output = 176;
-            break;
-        case 'C':
-        case 'c':
-            output = 192;
-            break;
-        case 'D':
-        case 'd':
-            output = 208;
-            break;
-        case 'E':
-        case 'e':
-            output = 224;
-            break;
-        case 'F':
-        case 'f':
-            output = 240;
-            break;
-        default:
-            output = 0;
-            break;
+        n *= 16;
+        n += v;
     }
-    switch (input.charAt(posit + 1)) {
-        case '1':
-            output += 1;
-            break;
-        case '2':
-            output += 2;
-            break;
-        case '3':
-            output += 3;
-            break;
-        case '4':
-            output += 4;
-            break;
-        case '5':
-            output += 5;
-            break;
-        case '6':
-            output += 6;
-            break;
-        case '7':
-            output += 7;
-            break;
-        case '8':
-            output += 8;
-            break;
-        case '9':
-            output += 9;
-            break;
-        case 'A':
-        case 'a':
-            output += 10;
-            break;
-        case 'B':
-        case 'b':
-            output += 11;
-            break;
-        case 'C':
-        case 'c':
-            output += 12;
-            break;
-        case 'D':
-        case 'd':
-            output += 13;
-            break;
-        case 'E':
-        case 'e':
-            output += 14;
-            break;
-        case 'F':
-        case 'f':
-            output += 15;
-            break;
-        default:
-            output += 0;
-            break;
-    }
-    return output;
+    return n;
 }
+
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
     uint32_t newTicks = 0;
     switch (type) {
@@ -236,12 +139,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
                     uint8_t bssid[6] = {0, 0, 0, 0, 0, 0};
                     bool bssid_valid = false;
                     if ((req_bssid.length() == 17) && (((req_bssid.charAt(2) + req_bssid.charAt(5) + req_bssid.charAt(8) + req_bssid.charAt(11) + req_bssid.charAt(14)) == (0x3A * 5)))) {
-                        bssid[0] = text2int(req_bssid, 0);
-                        bssid[1] = text2int(req_bssid, 3);
-                        bssid[2] = text2int(req_bssid, 6);
-                        bssid[3] = text2int(req_bssid, 9);
-                        bssid[4] = text2int(req_bssid, 12);
-                        bssid[5] = text2int(req_bssid, 15);
+                        bssid[0] = hex2dec_c(&req_bssid[0]);
+                        bssid[1] = hex2dec_c(&req_bssid[3]);
+                        bssid[2] = hex2dec_c(&req_bssid[6]);
+                        bssid[3] = hex2dec_c(&req_bssid[9]);
+                        bssid[4] = hex2dec_c(&req_bssid[12]);
+                        bssid[5] = hex2dec_c(&req_bssid[15]);
                         if ((bssid[0] + bssid[1] + bssid[2] + bssid[3] + bssid[4] + bssid[5]) > 0) bssid_valid = true;
                     }
                     Serial.printf("Got set SSID:%s %u, BSSID:%s %u, PASSWORD:%s %u\n", req_ssid.c_str(), req_ssid.length(), req_bssid.c_str(), req_bssid.length(), req_pass.c_str(), req_pass.length());
@@ -268,9 +171,4 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         case WStype_FRAGMENT_FIN:
             break;
     }
-}
-
-void websocket_h_init() {
-    webSocket.begin();
-    webSocket.onEvent(webSocketEvent);
 }

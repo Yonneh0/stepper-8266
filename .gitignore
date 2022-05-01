@@ -1,8 +1,4 @@
 .pio
 .vscode
-private.key
-public.key
-include/web/*.h
-include/public.key.h
-signed_firmware.bin.gz
-firmware.bin.gz
+include/web/*.gz
+

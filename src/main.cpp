@@ -1,17 +1,21 @@
-#include "public.key.h"
-
-uint16_t ota_port = 13442;
-
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
+#include <DNSServer.h>
+#include <EEPROM.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
+#include <LittleFS.h>
 #include <WebSocketsServer.h>
 
-ESP8266WebServer server(80);
+#include "config.h"
+#include "ftpserver.h"
+DNSServer dnsServer;
+FtpServer ftpSrv;
+ESP8266WebServer webServer(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
+uint16_t ota_port = 13442;
 
 const char* ap_name = "stepper";
 const char* ap_pass = "stepperstepper";
@@ -75,6 +79,7 @@ void setup() {
     if (ideSize != realSize) {
         Serial.println("Flash Chip configuration wrong!\n");
     }
+    LittleFS.begin();
 
     weh[0] = WiFi.onStationModeConnected(WiFi_onStationModeConnected);
     weh[1] = WiFi.onStationModeDHCPTimeout(WiFi_onStationModeDHCPTimeout);
@@ -91,6 +96,9 @@ void setup() {
     WiFi.setAutoReconnect(true);
     WiFi.persistent(true);
     WiFi.mode(WIFI_AP_STA);
+    dnsServer.start(53, "*", IPAddress({10, 255, 255, 1}));  // DNS spoofing (Only HTTP)
+    WiFi.softAPConfig(IPAddress({10, 255, 255, 1}), IPAddress({10, 255, 255, 1}), IPAddress({255, 255, 255, 0}));
+
     wifiConnectTime = millis();  // should be basically 0.... but...
     WiFi.begin();
     yield();
@@ -107,24 +115,40 @@ void setup() {
         }
     }
 
-    web_h_init();
+    webServer.on("/update", HTTP_POST, ota_onUpdate_ufn, ota_onUpdate);
+    webServer.serveStatic("/", LittleFS, "/", "max-age=31536000");
+    webServer.begin();
 
-    websocket_h_init();
+    webSocket.begin();
+    webSocket.onEvent(webSocketEvent);
 
-    ota_h_init();
+    ArduinoOTA.onStart(arduinoota_onstartup);
+    ArduinoOTA.onEnd(arduinoota_onend);
+    ArduinoOTA.onError(arduinoota_onerror);
+    ArduinoOTA.setPassword(ota_password);
+    ArduinoOTA.setHostname(hostname);
+    ArduinoOTA.setPort(ota_port);
+    ArduinoOTA.begin();
+
+    ftpSrv.begin("admin", "minad");
 
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", 81);
+    MDNS.addService("ftp", "tcp", 21);
+
     Serial.printf("Ready: http://%s.local/\n", hostname);
+    Serial.printf("       ftp://admin:minad@%s.local/\n", hostname);
     Serial.printf("       http://%s/\n", WiFi.softAPIP().toString().c_str());
     Serial.printf("       http://%s/\n", WiFi.localIP().toString().c_str());
 }
 
 void loop() {
-    delay(50);
+    yield();
     webSocket.loop();
-    server.handleClient();
+    webServer.handleClient();
+    dnsServer.processNextRequest();
     MDNS.update();
+    ftpSrv.handleFTP();
     ArduinoOTA.handle();
     stepperCheckFault();
     webSocketCheckResults();
