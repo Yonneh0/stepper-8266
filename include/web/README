@@ -1,5 +1,0 @@
-minstyle 2.0.1 https://minstyle.io/docs/get-started/installation
-source: https://cdn.jsdelivr.net/npm/minstyle.io@2.0.1/dist/css/minstyle.io.min.css
-
-minstyle darkmode switcher 0.0.1 https://minstyle.io/docs/Layout/dark
-source: https://cdn.jsdelivr.net/npm/dark-mode-switcher@0.0.1/dist/dark.min.js
